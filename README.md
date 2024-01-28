@@ -1,2 +1,2 @@
-# T-M-S
-Temperature Monitoring System for Data Racks/Cabinets
+# H-M-S
+Home Air Quality Monitoring
