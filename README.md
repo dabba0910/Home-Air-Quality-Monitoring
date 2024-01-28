@@ -1,2 +1,2 @@
-# H-M-S
-Home Air Quality Monitoring
+# H-A-M
+Home Air quality Monitoring
