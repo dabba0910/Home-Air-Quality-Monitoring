@@ -1,2 +1,2 @@
 # H-A-M
-Home Air quality Monitoring
+Indoor Air quality Monitoring (IAQ) for Home
