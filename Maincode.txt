@@ -1,0 +1,99 @@
+#include <WiFi.h>
+#include <WebSocketsServer.h>
+#include <Adafruit_Sensor.h>
+#include <DHT.h>
+#include <DHT_U.h>
+#include <Wire.h>
+#include "Adafruit_SGP30.h"
+
+// Replace with your network credentials
+const char* ssid = "Austin";
+const char* password = "kissmefirst";
+
+// DHT sensor setup
+#define DHTPIN 4  // Pin connected to DHT22
+#define DHTTYPE DHT22
+DHT dht(DHTPIN, DHTTYPE);
+
+// SGP30 sensor setup
+Adafruit_SGP30 sgp; // Create an instance of the SGP30 sensor
+
+// WebSocket server setup
+WebSocketsServer webSocket = WebSocketsServer(81);
+
+void setup() {
+  Serial.begin(115200);
+  dht.begin();
+
+  // Initialize SGP30 sensor
+  if (!sgp.begin()) {
+    Serial.println("SGP30 sensor not found!");
+    while (1); // Stop if SGP30 is not found
+  }
+  Serial.println("SGP30 sensor found!");
+
+  // Connect to Wi-Fi
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.println("Connecting to WiFi...");
+  }
+  Serial.println("Connected to WiFi");
+  Serial.print("ESP32 IP Address: ");
+  Serial.println(WiFi.localIP());
+
+  // Start WebSocket server
+  webSocket.begin();
+  webSocket.onEvent(webSocketEvent);
+}
+
+void loop() {
+  // Handle WebSocket communication
+  webSocket.loop();
+
+  // Read DHT sensor data
+  float temperature = dht.readTemperature();
+  float humidity = dht.readHumidity();
+
+  // Read SGP30 sensor data
+  if (sgp.IAQmeasure()) {
+    int eCO2 = sgp.eCO2; // Read eCO2 value
+    int TVOC = sgp.TVOC; // Read TVOC value
+
+    // Debug sensor readings
+    Serial.print("Temperature: ");
+    Serial.println(temperature);
+    Serial.print("Humidity: ");
+    Serial.println(humidity);
+    Serial.print("eCO2: ");
+    Serial.println(eCO2);
+    Serial.print("TVOC: ");
+    Serial.println(TVOC);
+
+    // If data is valid, broadcast it to all connected WebSocket clients
+    if (!isnan(temperature) && !isnan(humidity)) {
+      String sensorData = "Temperature: " + String(temperature) + " °C, " +
+                          "Humidity: " + String(humidity) + " %, " +
+                          "eCO2: " + String(eCO2) + " ppm, " +
+                          "TVOC: " + String(TVOC) + " ppb";
+      Serial.println("Sending sensor data: " + sensorData);  // Debug message
+      webSocket.broadcastTXT(sensorData);
+    } else {
+      Serial.println("Failed to read from DHT sensor");  // Debug message for failed readings
+    }
+  } else {
+    Serial.println("SGP30 measurement failed");
+  }
+
+  delay(2000);  // Send data every 2 seconds
+}
+
+void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
+  if (type == WStype_CONNECTED) {
+    Serial.println("WebSocket client connected");
+  } else if (type == WStype_DISCONNECTED) {
+    Serial.println("WebSocket client disconnected");
+  } else if (type == WStype_TEXT) {
+    Serial.printf("WebSocket received: %s\n", payload);
+  }
+}
