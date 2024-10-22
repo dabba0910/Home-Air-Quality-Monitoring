@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP32 Real-Time Sensor Data with Gauges</title>
+  
+  <style>
+    #gaugeContainer {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 20px;
+    }
+    .gauge {
+      width: 300px;
+      height: 250px;
+      text-align: center; /* Center text */
+    }
+    .gaugeLabel {
+      font-size: 18px; /* Font size for labels */
+      margin-top: 10px; /* Space between gauge and label */
+    }
+  </style>
+</head>
+<body>
+  <h1>ESP32 Real-Time Sensor Data</h1>
+  <div id="gaugeContainer">
+    <div class="gauge">
+      <div id="temperatureGauge" class="gauge"></div>
+      <div class="gaugeLabel">Temperature (°C)</div>
+    </div>
+    <div class="gauge">
+      <div id="humidityGauge" class="gauge"></div>
+      <div class="gaugeLabel">Humidity (%)</div>
+    </div>
+    <div class="gauge">
+      <div id="tvocGauge" class="gauge"></div>
+      <div class="gaugeLabel">TVOC (ppb)</div>
+    </div>
+    <div class="gauge">
+      <div id="eco2Gauge" class="gauge"></div>
+      <div class="gaugeLabel">eCO2 (ppm)</div>
+    </div>
+  </div>
+
+  <!-- Include libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/raphael/2.3.0/raphael.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/justgage@1.4.0/justgage.min.js"></script>
+
+  <script>
+    var websocket;
+    var temperatureGauge, humidityGauge, tvocGauge, eco2Gauge;
+
+    function initWebSocket() {
+      websocket = new WebSocket('ws://192.168.165.146:81/'); // Update IP as needed
+
+      websocket.onopen = function() {
+        console.log("WebSocket connection established");
+      };
+
+      websocket.onclose = function() {
+        console.log("WebSocket connection closed");
+      };
+
+      websocket.onmessage = function(event) {
+        console.log("Data received: " + event.data);
+
+        // Parse data assuming format "Temperature: X, Humidity: Y, eCO2: Z, TVOC: W"
+        try {
+          var data = event.data.split(", ");
+          var temperature = parseFloat(data[0].split(": ")[1]);
+          var humidity = parseFloat(data[1].split(": ")[1]);
+          var eCO2 = parseInt(data[2].split(": ")[1]);
+          var TVOC = parseInt(data[3].split(": ")[1]);
+
+          // Update gauges if they are defined
+          if (temperatureGauge && humidityGauge && tvocGauge && eco2Gauge) {
+            temperatureGauge.refresh(temperature);
+            humidityGauge.refresh(humidity);
+            eco2Gauge.refresh(eCO2); // Correct gauge for eCO2
+            tvocGauge.refresh(TVOC); // Correct gauge for TVOC
+          }
+        } catch (error) {
+          console.error("Error parsing data: ", error);
+        }
+      };
+
+      websocket.onerror = function(error) {
+        console.log("WebSocket error: " + error);
+      };
+    }
+
+    window.onload = function() {
+      // Initialize JustGage gauges
+      temperatureGauge = new JustGage({
+        id: "temperatureGauge",
+        value: 0,
+        min: -20,
+        max: 50,
+        title: "Temperature (°C)",
+        label: "°C",
+        levelColors: ["#00FF00", "#FFFF00", "#FF0000"]
+      });
+
+      humidityGauge = new JustGage({
+        id: "humidityGauge",
+        value: 0,
+        min: 0,
+        max: 100,
+        title: "Humidity (%)",
+        label: "%",
+        levelColors: ["#00BFFF", "#00FF00", "#FF0000"]
+      });
+
+      tvocGauge = new JustGage({
+        id: "tvocGauge", // Corrected ID for TVOC
+        value: 0,
+        min: 0,
+        max: 500, // Set the max value for TVOC as needed
+        title: "TVOC (ppb)", // Corrected title for TVOC
+        label: "ppb",
+        levelColors: ["#00FF00", "#FFFF00", "#FF0000"]
+      });
+
+      eco2Gauge = new JustGage({
+        id: "eco2Gauge", // Corrected ID for eCO2
+        value: 0,
+        min: 0,
+        max: 2000, // Set the max value for eCO2 as needed
+        title: "eCO2 (ppm)", // Corrected title for eCO2
+        label: "ppm",
+        levelColors: ["#00FF00", "#FFFF00", "#FF0000"]
+      });
+
+      console.log("Gauges initialized");
+
+      // Initialize WebSocket connection
+      initWebSocket();
+    };
+  </script>
+</body>
+</html>
