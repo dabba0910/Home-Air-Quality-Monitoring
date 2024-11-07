@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP32 Real-Time Sensor Data with Gauges</title>
+  
+  <style>
+    #gaugeContainer {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-around;
+      margin-top: 20px;
+    }
+    .gauge {
+      width: 300px;
+      height: 250px;
+      text-align: center;
+    }
+    .gaugeLabel {
+      font-size: 18px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>ESP32 Real-Time Sensor Data</h1>
+  <div id="gaugeContainer">
+    <div class="gauge">
+      <div id="temperatureGauge" class="gauge"></div>
+      <div class="gaugeLabel">Temperature (°C)</div>
+    </div>
+    <div class="gauge">
+      <div id="humidityGauge" class="gauge"></div>
+      <div class="gaugeLabel">Humidity (%)</div>
+    </div>
+    <div class="gauge">
+      <div id="tvocGauge" class="gauge"></div>
+      <div class="gaugeLabel">TVOC (ppb)</div>
+    </div>
+    <div class="gauge">
+      <div id="eco2Gauge" class="gauge"></div>
+      <div class="gaugeLabel">eCO2 (ppm)</div>
+    </div>
+    <div class="gauge">
+      <div id="pm1Gauge" class="gauge"></div>
+      <div class="gaugeLabel">PM1.0 (µg/m³)</div>
+    </div>
+    <div class="gauge">
+      <div id="pm25Gauge" class="gauge"></div>
+      <div class="gaugeLabel">PM2.5 (µg/m³)</div>
+    </div>
+    <div class="gauge">
+      <div id="pm10Gauge" class="gauge"></div>
+      <div class="gaugeLabel">PM10 (µg/m³)</div>
+    </div>
+  </div>
+
+  <!-- Include libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/raphael/2.3.0/raphael.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/justgage@1.4.0/justgage.min.js"></script>
+
+  <script>
+    var websocket;
+    var temperatureGauge, humidityGauge, tvocGauge, eco2Gauge, pm1Gauge, pm25Gauge, pm10Gauge;
+
+    function initWebSocket() {
+      websocket = new WebSocket('ws://192.168.88.146:81/'); // Update IP as needed
+
+      websocket.onopen = function() {
+        console.log("WebSocket connection established");
+      };
+
+      websocket.onclose = function() {
+        console.log("WebSocket connection closed");
+      };
+
+      websocket.onmessage = function(event) {
+        console.log("Data received: " + event.data);
+
+        // Parse data assuming format "Temperature: X, Humidity: Y, eCO2: Z, TVOC: W, PM1.0: A, PM2.5: B, PM10: C"
+        try {
+          var data = event.data.split(", ");
+          var temperature = parseFloat(data[0].split(": ")[1]);
+          var humidity = parseFloat(data[1].split(": ")[1]);
+          var eCO2 = parseInt(data[2].split(": ")[1]);
+          var TVOC = parseInt(data[3].split(": ")[1]);
+          var pm1 = parseInt(data[4].split(": ")[1]);
+          var pm25 = parseInt(data[5].split(": ")[1]);
+          var pm10 = parseInt(data[6].split(": ")[1]);
+
+          // Update gauges if they are defined
+          if (temperatureGauge && humidityGauge && tvocGauge && eco2Gauge && pm1Gauge && pm25Gauge && pm10Gauge) {
+            temperatureGauge.refresh(temperature);
+            humidityGauge.refresh(humidity);
+            eco2Gauge.refresh(eCO2);
+            tvocGauge.refresh(TVOC);
+            pm1Gauge.refresh(pm1);
+            pm25Gauge.refresh(pm25);
+            pm10Gauge.refresh(pm10);
+          }
+        } catch (error) {
+          console.error("Error parsing data: ", error);
+        }
+      };
+
+      websocket.onerror = function(error) {
+        console.log("WebSocket error: " + error);
+      };
+    }
+
+    window.onload = function() {
+      // Initialize JustGage gauges
+      temperatureGauge = new JustGage({
+        id: "temperatureGauge",
+        value: 0,
+        min: -20,
+        max: 50,
+        title: "Temperature (°C)",
+        label: "°C",
+        levelColors: ["#00FF00", "#FFFF00", "#FF0000"]
+      });
+
+      humidityGauge = new JustGage({
+        id: "humidityGauge",
+        value: 0,
+        min: 0,
+        max: 100,
+        title: "Humidity (%)",
+        label: "%",
+        levelColors: ["#00BFFF", "#00FF00", "#FF0000"]
+      });
+
+      tvocGauge = new JustGage({
+        id: "tvocGauge",
+        value: 0,
+        min: 0,
+        max: 500,
+        title: "TVOC (ppb)",
+        label: "ppb",
+        levelColors: ["#00FF00", "#FFFF00", "#FF0000"]
+      });
+
+      eco2Gauge = new JustGage({
+        id: "eco2Gauge",
+        value: 0,
+        min: 0,
+        max: 2000,
+        title: "eCO2 (ppm)",
+        label: "ppm",
+        levelColors: ["#00FF00", "#FFFF00", "#FF0000"]
+      });
+
+      pm1Gauge = new JustGage({
+        id: "pm1Gauge",
+        value: 0,
+        min: 0,
+        max: 100,
+        title: "PM1.0 (µg/m³)",
+        label: "µg/m³",
+        levelColors: ["#00FF00", "#FFFF00", "#FF0000"]
+      });
+
+      pm25Gauge = new JustGage({
+        id: "pm25Gauge",
+        value: 0,
+        min: 0,
+        max: 100,
+        title: "PM2.5 (µg/m³)",
+        label: "µg/m³",
+        levelColors: ["#00FF00", "#FFFF00", "#FF0000"]
+      });
+
+      pm10Gauge = new JustGage({
+        id: "pm10Gauge",
+        value: 0,
+        min: 0,
+        max: 100,
+        title: "PM10 (µg/m³)",
+        label: "µg/m³",
+        levelColors: ["#00FF00", "#FFFF00", "#FF0000"]
+      });
+
+      console.log("Gauges initialized");
+
+      // Initialize WebSocket connection
+      initWebSocket();
+    };
+  </script>
+</body>
+</html>
